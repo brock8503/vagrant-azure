@@ -118,6 +118,21 @@ module VagrantPlugins
       # @return [String]
       attr_accessor :wait_for_destroy
 
+      # (Optional) Custom VHD
+      #
+      # @return [String]
+      attr_accessor :custom_vm_name
+
+      # (Optional) Custom VHD
+      #
+      # @return [String]
+      attr_accessor :custom_storage_name
+
+      # (Optional) Custom VHD
+      #
+      # @return [String]
+      attr_accessor :custom_vm_os
+
       def initialize
         @tenant_id = UNSET_VALUE
         @client_id = UNSET_VALUE
@@ -141,6 +156,9 @@ module VagrantPlugins
         @winrm_install_self_signed_cert = UNSET_VALUE
         @deployment_template = UNSET_VALUE
         @wait_for_destroy = UNSET_VALUE
+        @custom_vm_name = UNSET_VALUE
+        @custom_storage_name = UNSET_VALUE
+        @custom_vm_os = UNSET_VALUE
       end
 
       def finalize!
@@ -150,7 +168,7 @@ module VagrantPlugins
         @client_id = ENV['AZURE_CLIENT_ID'] if @client_id == UNSET_VALUE
         @client_secret = ENV['AZURE_CLIENT_SECRET'] if @client_secret == UNSET_VALUE
 
-        @vm_name = Haikunator.haikunate(100) if @vm_name == UNSET_VALUE
+        @vm_name = Haikunator.haikunate(0)[0..15] if @vm_name == UNSET_VALUE
         @resource_group_name = Haikunator.haikunate(100) if @resource_group_name == UNSET_VALUE
         @vm_password = nil if @vm_password == UNSET_VALUE
         @vm_image_urn = 'canonical:ubuntuserver:16.04.0-LTS:latest' if @vm_image_urn == UNSET_VALUE
@@ -169,6 +187,12 @@ module VagrantPlugins
         @winrm_install_self_signed_cert = true if @winrm_install_self_signed_cert == UNSET_VALUE
         @deployment_template = nil if @deployment_template == UNSET_VALUE
         @wait_for_destroy = false if @wait_for_destroy == UNSET_VALUE
+
+        # TODO: Set these to some public image
+        @custom_vm_name = 'win7office365.vhd' if @custom_vm_name == UNSET_VALUE
+        @custom_storage_name = 'mycustomvm2' if @custom_storage_name == UNSET_VALUE
+        @custom_vm_os = 'Windows' if @custom_vm_os == UNSET_VALUE
+
       end
 
       def validate(machine)

@@ -19,6 +19,7 @@
     <% else %>
     "sshKeyData": {
       "type": "string",
+      "defaultValue": "not_set",
       "metadata": {
         "description": "SSH rsa public key file as a string."
       }
@@ -85,11 +86,32 @@
         "description": "Name of the virtual network"
       }
     },
+
     "winRmPort": {
       "type": "int",
       "defaultValue": 5986,
       "metadata": {
         "description": "WinRM port"
+      }
+    },
+    "osType": {
+      "type": "string",
+      "defaultValue": "Windows",
+      "metadata": {
+        "description": "Type of operating system"
+      }
+    },
+    "customStorageAccountName": {
+      "type": "string",
+      "defaultValue": "CustomVm",
+      "metadata": {
+        "description": "Name of the custom storage account"
+      }
+    },
+    "userImageVhdName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the custom vm"
       }
     }
   },
@@ -99,7 +121,7 @@
     "osDiskName": "[concat(parameters('vmName'), 'OSDisk1')]",
     "addressPrefix": "10.0.0.0/16",
     "subnetPrefix": "10.0.0.0/24",
-    "vmStorageAccountContainerName": "vagrant-vhds",
+    "vmStorageAccountContainerName": "vhds",
     "nicName": "[concat(parameters('vmName'), '-vagrantNIC')]",
     "publicIPAddressName": "[concat(parameters('vmName'), '-vagrantPublicIP')]",
     "publicIPAddressType": "Dynamic",
@@ -107,10 +129,13 @@
     "networkSecurityGroupName": "[concat(parameters('vmName'), '-vagrantNSG')]",
     "sshKeyPath": "[concat('/home/',parameters('adminUsername'),'/.ssh/authorized_keys')]",
     "vnetID": "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]",
+    "securityID": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]",
     "subnetRef": "[concat(variables('vnetID'),'/subnets/',parameters('subnetName'))]",
     "apiVersion": "2015-06-15",
     "singleQuote": "'",
-    "doubleQuote": "\""
+    "doubleQuote": "\"",
+    "userImageName" : "[concat('http://',parameters('customStorageAccountName'),'.blob.core.windows.net/', variables('vmStorageAccountContainerName'),'/',parameters('userImageVhdName'))]",
+    "osDiskVhdName" : "[concat('http://',parameters('customStorageAccountName'),'.blob.core.windows.net/', variables('vmStorageAccountContainerName'),'/',parameters('vmName'),'osDisk.vhd')]"
   },
   "resources": [
     {
@@ -172,6 +197,34 @@
               "priority": 123,
               "direction": "Inbound"
             }
+          },
+          {
+            "name": "rdp_rule",
+            "properties": {
+              "description": "Locks inbound down to ssh default port 3389.",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "3389",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 133,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "winrm_rule",
+            "properties": {
+              "description": "Locks inbound down to ssh default port 3389.",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "5986",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 143,
+              "direction": "Inbound"
+            }
           }
           <% end %>
         ]
@@ -223,9 +276,13 @@
       "location": "[variables('location')]",
       "dependsOn": [
         "[concat('Microsoft.Network/publicIPAddresses/', variables('publicIPAddressName'))]",
-        "[concat('Microsoft.Network/virtualNetworks/', parameters('virtualNetworkName'))]"
+        "[concat('Microsoft.Network/virtualNetworks/', parameters('virtualNetworkName'))]",
+        "[concat('Microsoft.Network/networkSecurityGroups/', variables('networkSecurityGroupName'))]"
       ],
       "properties": {
+        "networkSecurityGroup":{
+          "id":"[variables('securityID')]"
+        },
         "ipConfigurations": [
           {
             "name": "ipconfig1",
@@ -288,6 +345,7 @@
           }
           <% end %>
         },
+        <% if custom_vm_name == "" %>
         "storageProfile": {
           "imageReference": {
             "publisher": "[parameters('imagePublisher')]",
@@ -304,6 +362,22 @@
             "createOption": "FromImage"
           }
         },
+        <% else %>
+        "storageProfile": {
+          "osDisk" : {
+              "name" : "[concat(parameters('vmName'),'-osDisk')]",
+              "osType" : "[parameters('osType')]",
+              "caching" : "ReadWrite",
+              "createOption": "FromImage",
+              "image" : {
+                  "uri" : "[variables('userImageName')]"
+              },
+              "vhd" : {
+                  "uri" : "[variables('osDiskVhdName')]"
+              }
+          }
+        },
+        <% end %>
         "networkProfile": {
           "networkInterfaces": [
             {

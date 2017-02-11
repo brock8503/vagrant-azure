@@ -47,6 +47,9 @@ module VagrantPlugins
           winrm_install_self_signed_cert = config.winrm_install_self_signed_cert
           dns_label_prefix               = Haikunator.haikunate(100)
           deployment_template            = config.deployment_template
+          custom_vm_name            = config.custom_vm_name
+          custom_storage_name       = config.custom_storage_name
+          custom_vm_os              = config.custom_vm_os
 
           # Launch!
           env[:ui].info(I18n.t('vagrant_azure.launching_instance'))
@@ -58,6 +61,9 @@ module VagrantPlugins
           env[:ui].info(" -- Admin Username: #{admin_user_name}") if admin_user_name
           env[:ui].info(" -- VM Name: #{vm_name}")
           env[:ui].info(" -- VM Size: #{vm_size}")
+          env[:ui].info(" -- Custom VM path: #{custom_vm_name}")
+          env[:ui].info(" -- Custom VM os: #{custom_vm_os}")
+          env[:ui].info(" -- Custom VM storage: #{custom_storage_name}")
           env[:ui].info(" -- Image URN: #{vm_image_urn}")
           env[:ui].info(" -- Virtual Network Name: #{virtual_network_name}") if virtual_network_name
           env[:ui].info(" -- Subnet Name: #{subnet_name}") if subnet_name
@@ -69,8 +75,10 @@ module VagrantPlugins
 
           azure = env[:azure_arm_service]
           image_details = nil
-          env[:metrics]['get_image_details'] = Util::Timer.time do
-            image_details = get_image_details(azure, location, image_publisher, image_offer, image_sku, image_version)
+          unless custom_vm_os
+            env[:metrics]['get_image_details'] = Util::Timer.time do
+              image_details = get_image_details(azure, location, image_publisher, image_offer, image_sku, image_version)
+            end
           end
           @logger.info("Time to fetch os image details: #{env[:metrics]['get_image_details']}")
 
@@ -86,18 +94,12 @@ module VagrantPlugins
             virtualNetworkName:   virtual_network_name,
           }
 
-          # we need to pass different parameters depending upon the OS
-          operating_system = get_image_os(image_details)
-
-          template_params = {
-            availability_set_name:          availability_set_name,
-            operating_system:               operating_system,
-            winrm_install_self_signed_cert: winrm_install_self_signed_cert,
-            winrm_port:                     winrm_port,
-            dns_label_prefix:               dns_label_prefix,
-            location:                       location,
-            deployment_template:            deployment_template
-          }
+          unless custom_vm_os
+            # we need to pass different parameters depending upon the OS
+            operating_system = get_image_os(image_details)
+          else
+            operating_system = custom_vm_os
+          end
 
           if operating_system != 'Windows'
             private_key_paths = machine.config.ssh.private_key_path
@@ -124,6 +126,17 @@ module VagrantPlugins
             deployment_params.merge!(windows_params)
           end
 
+          template_params = {
+              availability_set_name:          availability_set_name,
+              operating_system:               operating_system,
+              winrm_install_self_signed_cert: winrm_install_self_signed_cert,
+              winrm_port:                     winrm_port,
+              dns_label_prefix:               dns_label_prefix,
+              location:                       location,
+              deployment_template:            deployment_template,
+              custom_vm_name:                 custom_vm_name
+          }
+
           env[:ui].info(" -- Create or Update of Resource Group: #{resource_group_name}")
           env[:metrics]['put_resource_group'] = Util::Timer.time do
             put_resource_group(azure, resource_group_name, location)
@@ -132,7 +145,8 @@ module VagrantPlugins
 
           deployment_params = build_deployment_params(template_params, deployment_params.reject{|_,v| v.nil?})
 
-          env[:ui].info(' -- Starting deployment')
+          env[:ui].info('Starting deployment')
+          env[:ui].info("Custom vhd #{custom_vm_name}") if custom_vm_name
           env[:metrics]['deployment_time'] = Util::Timer.time do
             put_deployment(azure, resource_group_name, deployment_params)
           end
@@ -142,6 +156,7 @@ module VagrantPlugins
           env[:machine].id = serialize_machine_id(resource_group_name, vm_name, location)
 
           @logger.info("Time to deploy: #{env[:metrics]['deployment_time']}")
+
           unless env[:interrupted]
             env[:metrics]['instance_ssh_time'] = Util::Timer.time do
               # Wait for SSH/WinRM to be ready.

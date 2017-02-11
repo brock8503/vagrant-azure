@@ -132,3 +132,162 @@ For instructions on how to setup an Azure Active Directory Application see: <htt
 * `winrm_install_self_signed_cert`: (Optional, Windows only) Whether to install a self-signed cert automatically to enable WinRM to communicate over HTTPS (5986). Only available when a custom `deployment_template` is not supplied. Default 'true'.
 * `deployment_template`: (Optional) A custom ARM template to use instead of the default template
 * `wait_for_destroy`: (Optional) Wait for all resources to be deleted prior to completing Vagrant destroy -- default false.
+* `endpoint`: (Optional) The Azure Management API endpoint -- default 'https://management.azure.com' seconds -- ENV['AZURE_MANAGEMENT_ENDPOINT'].
+
+### Notes
+Using ARM it is still possible to use a custom VM if it has been hosted to a storage account.
+
+* https://portal.azure.com/
+* https://manage.windowsazure.com/
+
+Make sure before starting we’ve run https://azure.microsoft.com/en-us/documentation/articles/resource-group-authenticate-service-principal-cli/
+
+To host the vm I still need to figure out how to:
+1.) Create a VM that https://github.com/Microsoft/azure-vhd-utils can upload to
+- Create a resource group and storageaccount (general purpose)
+  - TODO; grab automation option and see if it can integrate with azure cli
+2.) Figure out how to convert a VDI to VHD in virtual box, what I know:
+- Uninstall vbox tools
+- Delete all snapshots
+- Run `vboxmanage clonehd WinXP.vdi /winxp.vhd --format VHD`
+- Launch VHD and sysprep generalize before
+  - If sysprep fails to initialize, super hack https://blog.jamiebaldanza.org/2010/03/31/windows-7-sysprep-could-not-initialize-there-are-one-or-more-windows-updates-that-require-a-reboot/
+  - Program and Features -> Turn Windows features on or off -> Remove or Add a single game -> restart VM
+Note: Current the VHD is crashing in vbox when I load it
+- Fixed: Vbox VM should be configured to use IDE controller vs SATA controller
+Example:
+azure-vhd-utils --verbose upload --localvhdpath ./packer-virtualbox-iso-1461003945-disk1_copy.vhd --stgaccountname mycustomvm2 --stgaccountkey UnoAzxfpIPyFyGI7ZcdrO6L2L7w80S4FhRtzhWpzhKK8kIgzOS6WcNfKNaJgZZFE+hjhGqQNskuca0LdAWm8jA== --blobname win7office365azure-vhd-utils --verbose upload --localvhdpath /Users/kylemcfarland/Development/vagrant-azure/packer-virtualbox-iso-1461003945-disk1_copy.vhd --stgaccountname mycustomvm2 --stgaccountkey UnoAzxfpIPyFyGI7ZcdrO6L2L7w80S4FhRtzhWpzhKK8kIgzOS6WcNfKNaJgZZFE+hjhGqQNskuca0LdAWm8jA== --blobname win7office365
+
+3.) Complete the addition of the templat json in this project
+- Reference: https://azure.microsoft.com/en-us/documentation/articles/virtual-machines-linux-cli-deploy-templates/#create-a-custom-vm-image
+
+4.) Test the automation with `bundle exec vagrant`
+Notes: nokigiri was causing problems required `gem install nokogiri -v 1.6.3.1 -- --use-system-libraries`
+- gem install bundle -v 1.10.5
+- bundle _1.10.5_
+- bundle _1.10.5_ exec vagrant up --provider=azure --debug
+
+TODO: Currently vagrant can’t connect to the vm through winrm, this is a requirement to check
+vm status
+https://docs.microsoft.com/en-us/azure/virtual-machines/virtual-machines-windows-winrm
+https://github.com/Azure/azure-quickstart-templates/blob/master/201-vm-winrm-keyvault-windows/azuredeploy.json
+
+# Getting Started
+
+## Pre-requesites macOS
+1.) Install Virtualbox with [brew](http://brew.sh/)
+
+    # Must have cask to install virtualbox
+    $ brew tap caskroom/cask
+    $ brew cask install virtualbox
+
+1.) Install vagrant
+
+    $ brew cask install vagrant
+
+3.) Install node
+
+    $ brew install nvm
+    $ echo “source $(brew --prefix nvm)/nvm.sh” >> .bash_profile
+    $ nvm install node
+
+## Pre-requesites ubunutu
+1.) Install Virtualbox
+
+    $ wget -q https://www.virtualbox.org/download/oracle_vbox_2016.asc -O- | sudo apt-key add -
+    $ wget -q https://www.virtualbox.org/download/oracle_vbox.asc -O- | sudo apt-key add -i
+    $ sudo apt-get update
+    $ sudo apt-get install virtualbox-5.1
+
+1.) Install vagrant
+
+    $ sudo apt-get install vagrant
+
+2.) Install node
+
+    $ curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.33.0/install.sh | bash
+    # Add to bash profile
+    printf “export NVM_DIR='$HOME/.nvm’\n[ -s '$NVM_DIR/nvm.sh' ] && . $NVM_DIR/nvm.sh” >> .bash_profile
+
+## Setup azure
+1.) Create and log into [https://portal.azure.com](https://portal.azure.com) Windows Live account.
+**Note** Make sure you have an active subscription https://account.windowsazure.com/Subscriptions
+2.) Install azure cli
+
+    $ npm install -g azure-cli
+
+3.) Log into azure with account
+
+    $ azure login
+    # Make sure azure is in arm mode
+    $ azure config mode arm
+
+4.) Create the Active Directory and Service Principle. These are the primary parts for all resources created in azure.
+
+    # Give your app a name
+    $ azure ad sp create -n exampleapp > ad_sp.log
+
+5.) Get the **AppId** and **ObjectId** from `ad_sp.log`.
+
+    $ npm install -g azure_details
+    $ azure_details -n <app_name>
+    $ sed ‘/regex/g’ ad_sp.log
+    TODO: Create node module to parse this out and remap names (stupid MS)
+      azure account show <--- ID == subscription_id, Tenant_ID == tenant_id
+      azure ad sp show -c <app_name> --json <-- objectId == object_id, appId == client_id
+
+6.) Set your permissions to **owner** on the AD and SP
+
+    $ azure role assignment create --objectId {object_id} -o Owner -c /subscriptions/{subscription_id}/
+
+7.) Get the **client_key** from the portal.
+    - Get your AD key url details `azure_details -n <app_name> --getADUrl`
+        TODO generate https://portal.azure.com/#blade/Microsoft_AAD_IAM/ApplicationBlade/objectId/70dab975-7fbd-424d-8f90-01ca9c9a64c4/appId/d505af12-0aad-437d-af9b-083a29af4b13
+    - Open the output from `getADUrl` in a browser
+    - Create a new key under `All Settings -> Keys`
+    - Copy and save the key for later use `azure_details -n <app_name> --client_key <key_info>`
+
+8.) Create key ~/.ssh/azure_vagrant_rsa
+
+    $ ssh-keygen -t rsa -b 4096 -C "your_email@email.com"
+
+## Create reference VM
+You will need a reference Windows VHD that is has been `sysprep` and generalized for distribution
+
+1.) Refer to [https://github.com/joefitzgerald/packer-windows](https://github.com/joefitzgerald/packer-windows)
+    TODO Create a windows vanilla vagrant box and add instruction on adding this box
+
+2.) Generalize the image.
+
+    # TODO This most likely does not work correctly
+    $ vagrant ssh
+    $ Sysprep /generalize /shutdown /oobe
+
+**Note** Make sure there are no snapshots and if there are problems generalizing try this [hack](https://blog.jamiebaldanza.org/2010/03/31/windows-7-sysprep-could-not-initialize-there-are-one-or-more-windows-updates-that-require-a-reboot/)
+
+3.) Create the VDH after it is generalized to upload to azure
+
+    $ vboxmanage clonehd window_vm.vdi /output_to_upload.vhd --format VHD
+
+4.) Create a storage account for the output vhd
+
+    $ azure group create --name examplegroup --location westus --subscription {subscription_id}
+    $ azure storage account create --kind Storage --location westus --resource-group examplegroup --subscription {subscription_id} --sku-name LRS examplestorage
+
+5.) Get the **storage_key** from the portal.
+    - Get your AD key url details `azure_details -n <app_name> --getStorageAccountUrl`
+        TODO generate https://portal.azure.com/#resource/subscriptions/01f02320-1ffd-4b3d-9018-d2c91058f00a/resourceGroups/examplegroup/providers/Microsoft.Storage/storageAccounts/exmaplestorage/keys
+    - Open the output from `getStorageAccountUrl` in a browser
+    - Create a new key under `All Settings -> Keys`
+    - Copy and save the key for later use `azure_details -n <app_name> --storage_name --storage_key <key_info>`
+
+6.) Upload the vhd to azure
+
+    $ azure-vhd-utils --verbose upload --localvhdpath ./output_to_upload.vhd --stgaccountname examplestorage --stgaccountkey UnoAzxfpIPyFyGI7ZcdrO6L2L7w80S4FhRtzhWpzhKK8kIgzOS6WcNfKNaJgZZFE+hjhGqQNskuca0LdAWm8jA== --blobname windows_vm_template
+
+## Create a Azure VM from template
+Now that all the image template is uploaded an Azure VM can be created through the `vagrant-azure` plugin.
+
+1.) Install the plugin
+
+    vagrant plugin install vagrant-azure --plugin-version 'some_version' --plugin-prerelease
