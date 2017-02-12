@@ -92,6 +92,8 @@ module VagrantPlugins
             imageVersion:         image_version,
             subnetName:           subnet_name,
             virtualNetworkName:   virtual_network_name,
+            userImageVhdName:     custom_vm_name,
+            customStorageAccountName:     custom_storage_name
           }
 
           unless custom_vm_os
