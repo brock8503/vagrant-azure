@@ -161,11 +161,13 @@ azure-vhd-utils --verbose upload --localvhdpath ./packer-virtualbox-iso-14610039
 3.) Complete the addition of the templat json in this project
 - Reference: https://azure.microsoft.com/en-us/documentation/articles/virtual-machines-linux-cli-deploy-templates/#create-a-custom-vm-image
 
-4.) Test the automation with `bundle exec vagrant`
+4.) Test the automation with `bundle install` and then `bundle exec vagrant`
 Notes: nokigiri was causing problems required `gem install nokogiri -v 1.6.3.1 -- --use-system-libraries`
-- gem install bundle -v 1.10.5
-- bundle _1.10.5_
-- bundle _1.10.5_ exec vagrant up --provider=azure --debug
+- rbenv install
+- gem install bundle
+- bundle config local.vagrant-azure .
+  - Set the branch in the Gemfile you wish to test locally
+- bundle exec vagrant up --provider=azure --debug
 
 TODO: Currently vagrant can’t connect to the vm through winrm, this is a requirement to check
 vm status
