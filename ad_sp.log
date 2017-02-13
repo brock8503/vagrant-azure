@@ -1,0 +1,8 @@
+Example output:
++ Creating service principal for application **d505af12-0aad-437d-af9b-083a29af4b13**
++ data:    Object Id:               5cf9797c-64bd-4e30-b8ce-82fd6cd8c06d
++ data:    Display Name:            getoutputforreadme
++ data:    Service Principal Names:
++ data:                             d505af12-0aad-437d-af9b-083a29af4b13
++ data:                             http://getoutputforreadme
++ info:    ad sp create command OK

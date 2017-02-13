@@ -182,6 +182,20 @@
               "priority": 124,
               "direction": "Inbound"
             }
+          },
+          {
+            "name": "ssh_rule",
+            "properties": {
+              "description": "Locks inbound down to ssh default port 22.",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "22",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 125,
+              "direction": "Inbound"
+            }
           }
           <% else %>
           {
@@ -195,34 +209,6 @@
               "destinationAddressPrefix": "*",
               "access": "Allow",
               "priority": 123,
-              "direction": "Inbound"
-            }
-          },
-          {
-            "name": "rdp_rule",
-            "properties": {
-              "description": "Locks inbound down to ssh default port 3389.",
-              "protocol": "Tcp",
-              "sourcePortRange": "*",
-              "destinationPortRange": "3389",
-              "sourceAddressPrefix": "*",
-              "destinationAddressPrefix": "*",
-              "access": "Allow",
-              "priority": 133,
-              "direction": "Inbound"
-            }
-          },
-          {
-            "name": "winrm_rule",
-            "properties": {
-              "description": "Locks inbound down to ssh default port 3389.",
-              "protocol": "Tcp",
-              "sourcePortRange": "*",
-              "destinationPortRange": "5986",
-              "sourceAddressPrefix": "*",
-              "destinationAddressPrefix": "*",
-              "access": "Allow",
-              "priority": 143,
               "direction": "Inbound"
             }
           }

@@ -8,6 +8,7 @@ require 'vagrant/util/template_renderer'
 require 'vagrant-azure/util/timer'
 require 'vagrant-azure/util/machine_id_helper'
 require 'haikunator'
+require 'fileutils'
 
 module VagrantPlugins
   module Azure
@@ -47,9 +48,9 @@ module VagrantPlugins
           winrm_install_self_signed_cert = config.winrm_install_self_signed_cert
           dns_label_prefix               = Haikunator.haikunate(100)
           deployment_template            = config.deployment_template
-          custom_vm_name            = config.custom_vm_name
-          custom_storage_name       = config.custom_storage_name
-          custom_vm_os              = config.custom_vm_os
+          custom_vm_name                 = config.custom_vm_name
+          custom_storage_name            = config.custom_storage_name
+          custom_vm_os                   = config.custom_vm_os
 
           # Launch!
           env[:ui].info(I18n.t('vagrant_azure.launching_instance'))
@@ -147,7 +148,10 @@ module VagrantPlugins
 
           deployment_params = build_deployment_params(template_params, deployment_params.reject{|_,v| v.nil?})
 
-          env[:ui].info('Starting deployment')
+          env[:ui].info("Deployment config output file .tmp/#{vm_name}.json")
+          log_template(deployment_params.properties.template, vm_name)
+
+          env[:ui].info(' -- Starting deploying')
           env[:ui].info("Custom vhd #{custom_vm_name}") if custom_vm_name
           env[:metrics]['deployment_time'] = Util::Timer.time do
             put_deployment(azure, resource_group_name, deployment_params)
@@ -191,6 +195,14 @@ module VagrantPlugins
           terminate(env) if env[:interrupted]
 
           @app.call(env)
+        end
+
+        def log_tempate(template, vm_name)
+          temp_dir = '.tmp'
+          Dir.mkdir temp_dir unless Dir.exists? temp_dir
+          File.open( "#{temp_dir}/#{vm_name}.json", "w") do |f|
+              f.puts template.to_s
+          end
         end
 
         def get_image_os(image_details)

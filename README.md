@@ -229,6 +229,8 @@ https://github.com/Azure/azure-quickstart-templates/blob/master/201-vm-winrm-key
     # Give your app a name
     $ azure ad sp create -n exampleapp > ad_sp.log
 
+**Note** Additional reading can be found on [azures portal](https://azure.microsoft.com/en-us/documentation/articles/resource-group-authenticate-service-principal-cli/)
+
 5.) Get the **AppId** and **ObjectId** from `ad_sp.log`.
 
     $ npm install -g azure_details
@@ -293,3 +295,8 @@ Now that all the image template is uploaded an Azure VM can be created through t
 1.) Install the plugin
 
     vagrant plugin install vagrant-azure --plugin-version 'some_version' --plugin-prerelease
+
+TODOs
+* Develop the azure_details node project
+* Build template VM with winrm enabled this requires a self sign cert look at ps1 script
+* WinRM was not working because config.guest = “windows” we should automatically set that when get_image_os(image_details) == windows
