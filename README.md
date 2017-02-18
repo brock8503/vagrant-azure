@@ -233,7 +233,7 @@ https://github.com/Azure/azure-quickstart-templates/blob/master/201-vm-winrm-key
 
 5.) Get the **AppId** and **ObjectId** from `ad_sp.log`.
 
-    $ npm install -g azure_details
+    $ npm install -g azure-info
     $ azure_details -n <app_name>
     $ sed ‘/regex/g’ ad_sp.log
     TODO: Create node module to parse this out and remap names (stupid MS)
