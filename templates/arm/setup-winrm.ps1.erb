@@ -1,12 +1,7 @@
-$hostname = <%= winrm_port %>
-// no good
-//$Cert = (New-SelfSignedCertificate -CertstoreLocation Cert:/LocalMachine/My -DnsName $hostname).Thumbprint
-// no good
-//./New-SelfSignedCertificateEx -Subject "CN=TESTTOKEN.IAMTEC.NL" -EnhancedKeyUsage "Server Authentication","Client authentication" -KeyUsage "KeyEncipherment","DigitalSignature" -SubjectAlternativeName "DNS Name=$hostname" -StoreLocation "LocalMachine" -ProviderName "Microsoft Enhanced Cryptographic Provider v1.0" -AlgorithmName RSA -KeyLength 2048 -SignatureAlgorithm SHA256 -FriendlyName "My Test Self-Signed Certificate" -exportable
+$hostname = '<%= dns_label_prefix %>.<%= location %>.cloudapp.azure.com'
+& 'C:\Program Files (x86)\Windows Kits\8.1\bin\x64\makecert.exe' -n 'CN=$hostname'  -pe -ss my -sr LocalMachine -sky exchange -m 96 -a sha1 -len 2048 -eku 1.3.6.1.5.5.7.3.1 -r My_Root_CA.cer
 $Cert = Get-ChildItem Cert:\LocalMachine\My
-// GOOD
-"C:\Program Files (x86)\Windows Kits\8.1\bin\x64\makecert.exe" -n "CN=sparkling-sky-49.westus.cloudapp.azure.com" -pe -ss my -sr LocalMachine -sky exchange -m 96 -a sha1 -len 2048 -eku 1.3.6.1.5.5.7.3.1 -r My_Root_CA.cer
-$transport = New-Item -Path WSMan:/LocalHost/Listener -Transport HTTPS -Address * -CertificateThumbPrint $Cert.Thumbprint -Force
+$transport = New-Item -Path WSMan:/LocalHost/Listener -Transport HTTPS -Address * -CertificateThumbPrint $Cert[0].Thumbprint -Force
 cd $transport.PSPath
 set-item  ./HostName -value $hostname -force
 set-item  ./Port -value 5986 -force

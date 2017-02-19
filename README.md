@@ -296,6 +296,14 @@ Now that all the image template is uploaded an Azure VM can be created through t
 
     vagrant plugin install vagrant-azure --plugin-version 'some_version' --plugin-prerelease
 
+## Development
+Test the automation with `bundle install` and then `bundle exec vagrant`
+Notes: nokigiri was causing problems required `gem install nokogiri -v 1.6.3.1 -- --use-system-libraries`
+- rbenv install
+- gem install bundle
+- bundle config local.vagrant-azure .
+  - Set the branch in the Gemfile you wish to test locally
+- bundle exec vagrant up --provider=azure --debug
 TODOs
 * Develop the azure_details node project
 * Build template VM with winrm enabled this requires a self sign cert look at ps1 script

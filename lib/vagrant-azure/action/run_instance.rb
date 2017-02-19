@@ -197,7 +197,7 @@ module VagrantPlugins
           @app.call(env)
         end
 
-        def log_tempate(template, vm_name)
+        def log_template(template, vm_name)
           temp_dir = '.tmp'
           Dir.mkdir temp_dir unless Dir.exists? temp_dir
           File.open( "#{temp_dir}/#{vm_name}.json", "w") do |f|
